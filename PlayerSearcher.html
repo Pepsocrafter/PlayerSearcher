@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Game Finder</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+            color: #333;
+            text-align: center;
+        }
+
+        h1 {
+            color: #0a74da;
+            margin-top: 50px;
+        }
+
+        h2 {
+            color: #0a74da;
+            margin-top: 30px;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        /* Input and Button Styles */
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            margin-bottom: 20px;
+            border: 2px solid #0a74da;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #0056b3;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 18px;
+            background-color: #0a74da;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Results Box */
+        #results {
+            background-color: white;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            width: 60%;
+            text-align: left;
+            font-size: 18px;
+        }
+
+        /* Links */
+        a {
+            color: #0a74da;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            input[type="text"] {
+                width: 80%;
+            }
+
+            button {
+                width: 80%;
+            }
+
+            #results {
+                width: 80%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Roblox Game Finder</h1>
+    <p>Enter a Roblox username to see if they're playing a game:</p>
+    
+    <input type="text" id="username" placeholder="Enter Username">
+    <button onclick="findGame()">Search</button>
+
+    <h2>Results:</h2>
+    <div id="results"></div>
+
+    <script>
+        async function findGame() {
+            const username = document.getElementById('username').value.trim();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Searching...';
+
+            if (!username) {
+                resultsDiv.innerHTML = 'Please enter a username.';
+                return;
+            }
+
+            try {
+                // Step 1: Fetch User ID from Username
+                const userIdResponse = await fetch(`https://users.roblox.com/v1/usernames/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernames: [username] })
+                });
+                const userIdData = await userIdResponse.json();
+
+                if (userIdData.data.length === 0) {
+                    resultsDiv.innerHTML = 'User not found.';
+                    return;
+                }
+
+                const userId = userIdData.data[0].id;
+
+                // Step 2: Check User Presence (if they're in a game)
+                const presenceResponse = await fetch(`https://presence.roblox.com/v1/presence/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userIds: [userId] })
+                });
+                const presenceData = await presenceResponse.json();
+                const presenceInfo = presenceData.userPresences[0];
+
+                if (presenceInfo.placeId) {
+                    resultsDiv.innerHTML = `
+                        <p><strong>Username:</strong> ${username}</p>
+                        <p><strong>Currently playing:</strong> <a href="https://www.roblox.com/games/${presenceInfo.placeId}" target="_blank">Game ID: ${presenceInfo.placeId}</a></p>
+                        <p><strong>Game Name:</strong> ${presenceInfo.lastLocation}</p>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<p><strong>Username:</strong> ${username}</p><p>Not currently in a game or joins disabled.</p>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = 'An error occurred. Please try again later.';
+            }
+        }
+    </script>
+
+</body>
+</html>
